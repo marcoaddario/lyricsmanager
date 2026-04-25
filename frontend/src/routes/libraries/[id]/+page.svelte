@@ -38,11 +38,17 @@
 
   function openEdit(song: any) {
     editingSong = song;
-    songForm = {
-      title: song.title, artist: song.artist || '',
-      lyrics: song.lyrics || '', key: song.key || '',
-      tempo: song.tempo?.toString() || '', notes: song.notes || ''
-    };
+    // Fetch full song details including lyrics
+    api.songs.get(libId, song.id).then(fullSong => {
+      songForm = {
+        title: fullSong.title, artist: fullSong.artist || '',
+        lyrics: fullSong.lyrics || '', key: fullSong.key || '',
+        tempo: fullSong.tempo?.toString() || '', notes: fullSong.notes || ''
+      };
+    }).catch(e => {
+      toasts.add('Failed to load song details', 'error');
+      editingSong = null;
+    });
   }
 
   function closeEditor() { editingSong = null; }

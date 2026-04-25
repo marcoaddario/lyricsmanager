@@ -20,6 +20,9 @@
   let editingMetadata = false;
   let metadataForm = { name: '', description: '', event_date: '' };
 
+  // Drag and drop
+  let draggedIndex: number | null = null;
+
   // Editable items list (positions are indices+1)
   let items: any[] = [];
 
@@ -65,6 +68,33 @@
     const arr = [...items];
     [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
     items = arr;
+  }
+
+  function onDragStart(event: DragEvent, idx: number) {
+    // Don't start drag if clicking on buttons
+    if ((event.target as HTMLElement).tagName === 'BUTTON') return;
+    draggedIndex = idx;
+    event.dataTransfer!.effectAllowed = 'move';
+  }
+
+  function onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = 'move';
+  }
+
+  function onDrop(event: DragEvent, dropIndex: number) {
+    event.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+    
+    const newItems = [...items];
+    const [draggedItem] = newItems.splice(draggedIndex, 1);
+    newItems.splice(dropIndex, 0, draggedItem);
+    items = newItems;
+    draggedIndex = null;
+  }
+
+  function onDragEnd() {
+    draggedIndex = null;
   }
 
   async function save() {
@@ -154,7 +184,13 @@
       {:else}
         <div class="setlist-items">
           {#each items as item, idx}
-            <div class="set-item">
+            <div class="set-item" 
+                 draggable="true" 
+                 on:dragstart={(e) => onDragStart(e, idx)}
+                 on:dragover={onDragOver}
+                 on:drop={(e) => onDrop(e, idx)}
+                 on:dragend={onDragEnd}
+                 class:dragging={draggedIndex === idx}>
               <span class="position mono">{idx + 1}</span>
               <div class="set-item-info">
                 <span class="set-item-title">{item.song?.title || item.song_id}</span>
@@ -215,6 +251,11 @@
     display: flex; align-items: center; gap: 10px;
     background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
     padding: 0.5rem 0.75rem;
+    cursor: grab;
+  }
+  .set-item.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
   }
   .position { color: var(--text3); font-size: 0.8rem; min-width: 20px; }
   .set-item-info { flex: 1; min-width: 0; }
