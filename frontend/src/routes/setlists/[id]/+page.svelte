@@ -16,12 +16,21 @@
   let saving = false;
   let isDownloaded = false;
 
+  // Metadata editing
+  let editingMetadata = false;
+  let metadataForm = { name: '', description: '', event_date: '' };
+
   // Editable items list (positions are indices+1)
   let items: any[] = [];
 
   onMount(async () => {
     [setlist, libraries] = await Promise.all([api.setlists.get(id), api.libraries.list()]);
     items = [...setlist.items];
+    metadataForm = {
+      name: setlist.name,
+      description: setlist.description || '',
+      event_date: setlist.event_date ? new Date(setlist.event_date).toISOString().split('T')[0] : ''
+    };
     if (libraries.length > 0) { selectedLibrary = libraries[0].id; await loadSongs(); }
     isDownloaded = await offlineStore.isSetlistDownloaded(id);
     loading = false;
@@ -73,6 +82,21 @@
     finally { saving = false; }
   }
 
+  async function updateMetadata() {
+    saving = true;
+    try {
+      const payload = {
+        name: metadataForm.name,
+        description: metadataForm.description || undefined,
+        event_date: metadataForm.event_date || undefined
+      };
+      setlist = await api.setlists.update(id, payload);
+      editingMetadata = false;
+      toasts.add('Metadata updated ✓', 'success');
+    } catch (e: any) { toasts.add(e.message, 'error'); }
+    finally { saving = false; }
+  }
+
   async function downloadOffline() {
     try {
       const data = await api.setlists.download(id);
@@ -90,7 +114,26 @@
 {:else}
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap">
     <a href="/setlists" style="color:var(--text2);font-size:0.85rem">← Back</a>
-    <h1 style="flex:1">{setlist.name}</h1>
+    {#if editingMetadata}
+      <div style="flex:1">
+        <div class="field" style="margin-bottom:0.5rem">
+          <input class="input" bind:value={metadataForm.name} placeholder="Setlist name" />
+        </div>
+        <div class="field" style="margin-bottom:0.5rem">
+          <input class="input" bind:value={metadataForm.description} placeholder="Description (optional)" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <input class="input" type="date" bind:value={metadataForm.event_date} />
+        </div>
+      </div>
+      <button class="btn btn-ghost" on:click={() => { editingMetadata = false; metadataForm = { name: setlist.name, description: setlist.description || '', event_date: setlist.event_date ? new Date(setlist.event_date).toISOString().split('T')[0] : '' }; }}>Cancel</button>
+      <button class="btn btn-primary" disabled={saving} on:click={updateMetadata}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+    {:else}
+      <h1 style="flex:1">{setlist.name}</h1>
+      <button class="btn btn-ghost" on:click={() => editingMetadata = true}>✏ Edit metadata</button>
+    {/if}
     <a href="/perform/{id}" class="btn btn-primary">🎤 Perform</a>
     {#if isDownloaded}
       <span class="badge badge-success">✓ Offline cached</span>
