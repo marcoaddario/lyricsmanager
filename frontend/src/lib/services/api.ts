@@ -71,9 +71,9 @@ async function request(path: string, init: RequestInit = {}, retry = true): Prom
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const api = {
   auth: {
-    login: async (email: string, password: string) => {
+    login: async (identifier: string, password: string) => {
       const data = await request('/auth/login', {
-        method: 'POST', body: JSON.stringify({ email, password })
+        method: 'POST', body: JSON.stringify({ identifier, password })
       });
       setTokens(data.access_token, data.refresh_token);
       return data;

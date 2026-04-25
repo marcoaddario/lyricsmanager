@@ -57,11 +57,28 @@ async def update_user(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    # Non-admins cannot change admin flag
+    
     update_data = body.model_dump(exclude_none=True)
+    
+    # Check for email/username uniqueness if they're being updated
+    if 'email' in update_data and update_data['email'] != user.email:
+        existing = await db.execute(select(User).where(User.email == update_data['email']))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already exists")
+    
+    if 'username' in update_data and update_data['username'] != user.username:
+        existing = await db.execute(select(User).where(User.username == update_data['username']))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Non-admins cannot change admin flag or active status
     if not current_user.is_admin:
         update_data.pop("is_admin", None)
         update_data.pop("is_active", None)
+        # Non-admins also cannot change email/username
+        update_data.pop("email", None)
+        update_data.pop("username", None)
+    
     for k, v in update_data.items():
         setattr(user, k, v)
     return user

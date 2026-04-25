@@ -9,6 +9,9 @@
   let form = { email: '', username: '', password: '', display_name: '', is_admin: false };
   let saving = false;
 
+  let editingUser: any = null; // null = not editing, user object = editing
+  let editForm = { email: '', username: '', display_name: '', is_admin: false };
+
   onMount(async () => {
     try { users = await api.users.list(); } catch (e: any) { toasts.add(e.message, 'error'); }
     loading = false;
@@ -47,6 +50,36 @@
       users = users.filter(u => u.id !== id);
       toasts.add('User deleted', 'success');
     } catch (e: any) { toasts.add(e.message, 'error'); }
+  }
+
+  function openEdit(user: any) {
+    editingUser = user;
+    editForm = {
+      email: user.email,
+      username: user.username,
+      display_name: user.display_name || '',
+      is_admin: user.is_admin
+    };
+  }
+
+  function closeEdit() {
+    editingUser = null;
+  }
+
+  async function saveEdit() {
+    saving = true;
+    try {
+      const updated = await api.users.update(editingUser.id, {
+        email: editForm.email,
+        username: editForm.username,
+        display_name: editForm.display_name || undefined,
+        is_admin: editForm.is_admin
+      });
+      users = users.map(u => u.id === updated.id ? updated : u);
+      editingUser = null;
+      toasts.add('User updated', 'success');
+    } catch (e: any) { toasts.add(e.message, 'error'); }
+    finally { saving = false; }
   }
 </script>
 
@@ -110,40 +143,72 @@
       </thead>
       <tbody>
         {#each users as u}
-          <tr class:inactive={!u.is_active}>
-            <td>
-              <div style="font-weight:500">{u.display_name || u.username}</div>
-              <div style="color:var(--text3);font-size:0.75rem">@{u.username}</div>
-            </td>
-            <td style="color:var(--text2);font-size:0.85rem">{u.email}</td>
-            <td>
-              {#if u.is_admin}
-                <span class="badge badge-success">admin</span>
-              {:else}
-                <span class="badge" style="background:var(--bg3);color:var(--text2)">user</span>
-              {/if}
-            </td>
-            <td>
-              {#if u.is_active}
-                <span class="badge badge-success">active</span>
-              {:else}
-                <span class="badge badge-error">inactive</span>
-              {/if}
-            </td>
-            <td style="color:var(--text3);font-size:0.8rem">{new Date(u.created_at).toLocaleDateString()}</td>
-            <td>
-              <div style="display:flex;gap:4px">
-                <button class="btn btn-ghost btn-sm" on:click={() => toggleAdmin(u)}>
-                  {u.is_admin ? 'Revoke admin' : 'Make admin'}
-                </button>
-                <button class="btn btn-ghost btn-sm" on:click={() => toggleActive(u)}>
-                  {u.is_active ? 'Disable' : 'Enable'}
-                </button>
-                <button class="btn btn-ghost btn-sm" style="color:var(--error)"
-                  on:click={() => deleteUser(u.id)}>Delete</button>
-              </div>
-            </td>
-          </tr>
+          {#if editingUser?.id === u.id}
+            <tr>
+              <td colspan="6" style="padding:1rem">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem">
+                  <div class="field">
+                    <label>Email *</label>
+                    <input class="input" type="email" bind:value={editForm.email} />
+                  </div>
+                  <div class="field">
+                    <label>Username *</label>
+                    <input class="input" bind:value={editForm.username} />
+                  </div>
+                  <div class="field">
+                    <label>Display name</label>
+                    <input class="input" bind:value={editForm.display_name} />
+                  </div>
+                  <div></div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem">
+                  <input type="checkbox" id="edit_is_admin_{u.id}" bind:checked={editForm.is_admin} />
+                  <label for="edit_is_admin_{u.id}" style="font-size:0.875rem;color:var(--text2)">Admin user</label>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-primary" disabled={saving || !editForm.email || !editForm.username}
+                    on:click={saveEdit}>{saving ? 'Saving…' : 'Save changes'}</button>
+                  <button class="btn btn-ghost" on:click={closeEdit}>Cancel</button>
+                </div>
+              </td>
+            </tr>
+          {:else}
+            <tr class:inactive={!u.is_active}>
+              <td>
+                <div style="font-weight:500">{u.display_name || u.username}</div>
+                <div style="color:var(--text3);font-size:0.75rem">@{u.username}</div>
+              </td>
+              <td style="color:var(--text2);font-size:0.85rem">{u.email}</td>
+              <td>
+                {#if u.is_admin}
+                  <span class="badge badge-success">admin</span>
+                {:else}
+                  <span class="badge" style="background:var(--bg3);color:var(--text2)">user</span>
+                {/if}
+              </td>
+              <td>
+                {#if u.is_active}
+                  <span class="badge badge-success">active</span>
+                {:else}
+                  <span class="badge badge-error">inactive</span>
+                {/if}
+              </td>
+              <td style="color:var(--text3);font-size:0.8rem">{new Date(u.created_at).toLocaleDateString()}</td>
+              <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <button class="btn btn-ghost btn-sm" on:click={() => openEdit(u)}>Edit</button>
+                  <button class="btn btn-ghost btn-sm" on:click={() => toggleAdmin(u)}>
+                    {u.is_admin ? 'Revoke admin' : 'Make admin'}
+                  </button>
+                  <button class="btn btn-ghost btn-sm" on:click={() => toggleActive(u)}>
+                    {u.is_active ? 'Disable' : 'Enable'}
+                  </button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--error)"
+                    on:click={() => deleteUser(u.id)}>Delete</button>
+                </div>
+              </td>
+            </tr>
+          {/if}
         {/each}
       </tbody>
     </table>

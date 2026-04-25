@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    identifier: str  # Can be email or username
     password: str
 
 
@@ -31,6 +31,8 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
     display_name: Optional[str] = None
     color_theme: Optional[str] = None
     is_active: Optional[bool] = None

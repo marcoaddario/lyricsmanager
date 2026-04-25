@@ -3,21 +3,28 @@
   import { user, toasts } from '$lib/stores';
   import { api } from '$lib/services/api';
 
-  let email = '';
+  let identifier = '';
   let password = '';
   let loading = false;
   let error = '';
 
   async function handleLogin() {
-    if (!email || !password) { error = 'Please fill in all fields'; return; }
+    if (!identifier || !password) { error = 'Please fill in all fields'; return; }
     loading = true; error = '';
     try {
-      await api.auth.login(email, password);
+      await api.auth.login(identifier, password);
       const me = await api.auth.me();
       user.set(me);
       goto('/');
     } catch (e: any) {
-      error = e.message || 'Login failed';
+      // Handle different error formats
+      if (typeof e.message === 'string') {
+        error = e.message;
+      } else if (e.message && typeof e.message === 'object') {
+        error = e.message.detail || e.message.message || 'Login failed';
+      } else {
+        error = 'Login failed';
+      }
     } finally {
       loading = false;
     }
@@ -37,9 +44,9 @@
     {/if}
 
     <div class="field">
-      <label for="email">Email</label>
-      <input id="email" class="input" type="email" bind:value={email}
-        placeholder="you@example.com" autocomplete="email"
+      <label for="identifier">Email or Username</label>
+      <input id="identifier" class="input" type="text" bind:value={identifier}
+        placeholder="you@example.com or username" autocomplete="username"
         on:keydown={e => e.key === 'Enter' && handleLogin()} />
     </div>
     <div class="field">
