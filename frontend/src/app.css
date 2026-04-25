@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+/* ── Base reset ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.2s, color 0.2s;
+}
+a { color: var(--accent); text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+
+/* ── Theme tokens ────────────────────────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg: #0f0f0f;
+  --bg2: #161616;
+  --bg3: #1e1e1e;
+  --bg4: #252525;
+  --border: #2e2e2e;
+  --border2: #3a3a3a;
+  --text: #e8e8e8;
+  --text2: #a0a0a0;
+  --text3: #606060;
+  --accent: #7c6af7;
+  --accent-dim: #4c3eb5;
+  --accent-glow: rgba(124,106,247,0.15);
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #fbbf24;
+  --lyrics-bg: #111;
+  --lyrics-text: #f0f0f0;
+}
+
+[data-theme="light"] {
+  --bg: #f7f7f5;
+  --bg2: #ffffff;
+  --bg3: #f0efec;
+  --bg4: #e8e7e3;
+  --border: #d8d7d2;
+  --border2: #c4c3be;
+  --text: #1a1a1a;
+  --text2: #5a5a5a;
+  --text3: #9a9a9a;
+  --accent: #5b4fcf;
+  --accent-dim: #3b30a8;
+  --accent-glow: rgba(91,79,207,0.12);
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #d97706;
+  --lyrics-bg: #fff;
+  --lyrics-text: #111;
+}
+
+[data-theme="midnight"] {
+  --bg: #070a14;
+  --bg2: #0d1120;
+  --bg3: #121828;
+  --bg4: #192030;
+  --border: #1e2b42;
+  --border2: #253450;
+  --text: #d0daf0;
+  --text2: #7888aa;
+  --text3: #3a4860;
+  --accent: #38bdf8;
+  --accent-dim: #0ea5e9;
+  --accent-glow: rgba(56,189,248,0.12);
+  --success: #34d399;
+  --error: #fb7185;
+  --warning: #fbbf24;
+  --lyrics-bg: #060910;
+  --lyrics-text: #c8d4f0;
+}
+
+[data-theme="forest"] {
+  --bg: #080f08;
+  --bg2: #0d160d;
+  --bg3: #121e12;
+  --bg4: #182518;
+  --border: #1e301e;
+  --border2: #253c25;
+  --text: #d0e8d0;
+  --text2: #7a9a7a;
+  --text3: #3a5a3a;
+  --accent: #4ade80;
+  --accent-dim: #16a34a;
+  --accent-glow: rgba(74,222,128,0.12);
+  --success: #86efac;
+  --error: #fca5a5;
+  --warning: #fcd34d;
+  --lyrics-bg: #060d06;
+  --lyrics-text: #c0dcc0;
+}
+
+[data-theme="amber"] {
+  --bg: #100c05;
+  --bg2: #1a1408;
+  --bg3: #221b0c;
+  --bg4: #2a2210;
+  --border: #352a10;
+  --border2: #423412;
+  --text: #f0e0c0;
+  --text2: #a08040;
+  --text3: #604820;
+  --accent: #f59e0b;
+  --accent-dim: #d97706;
+  --accent-glow: rgba(245,158,11,0.15);
+  --success: #86efac;
+  --error: #fca5a5;
+  --warning: #fcd34d;
+  --lyrics-bg: #0e0a04;
+  --lyrics-text: #eedcb0;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 56px 1fr;
+  min-height: 100dvh;
+}
+@media (max-width: 768px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .sidebar.open { display: flex; position: fixed; inset: 0; z-index: 100; }
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+.mono { font-family: 'DM Mono', monospace; }
+h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
+h2 { font-size: 1.25rem; font-weight: 500; }
+h3 { font-size: 1rem; font-weight: 500; }
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+.card-hover {
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card-hover:hover {
+  border-color: var(--border2);
+  transform: translateY(-1px);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0.45em 1em; border-radius: 8px; font-size: 0.875rem;
+  font-weight: 500; border: 1px solid transparent; transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+.btn-ghost {
+  background: transparent; color: var(--text2); border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+.btn-danger { background: var(--error); color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+.btn-sm { padding: 0.3em 0.75em; font-size: 0.8rem; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 1rem; }
+.field label { font-size: 0.8rem; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+.input {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.55em 0.85em;
+  color: var(--text); font-size: 0.9rem; width: 100%;
+  transition: border-color 0.15s;
+}
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.input::placeholder { color: var(--text3); }
+textarea.input { resize: vertical; min-height: 120px; line-height: 1.6; font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.badge-accent { background: var(--accent-glow); color: var(--accent); }
+.badge-success { background: rgba(74,222,128,0.1); color: var(--success); }
+.badge-error { background: rgba(248,113,113,0.1); color: var(--error); }
+
+/* ── Lyrics display ──────────────────────────────────────────────────────── */
+.lyrics-viewer {
+  background: var(--lyrics-bg); color: var(--lyrics-text);
+  font-family: 'DM Mono', monospace;
+  padding: 2rem; border-radius: 12px;
+  white-space: pre-wrap; line-height: 1.9;
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  min-height: 60vh;
+}
+
+/* ── Offline banner ──────────────────────────────────────────────────────── */
+.offline-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: var(--warning); color: #000;
+  text-align: center; padding: 6px; font-size: 0.8rem; font-weight: 600;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
