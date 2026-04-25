@@ -15,6 +15,7 @@
   let editingSong: any = null;   // null = hidden, {} = new, {id:...} = edit
   let songForm = { title: '', artist: '', lyrics: '', key: '', tempo: '', notes: '' };
   let saving = false;
+  let searchingLyrics = false;
 
   onMount(async () => {
     [library, songs] = await Promise.all([
@@ -52,6 +53,32 @@
   }
 
   function closeEditor() { editingSong = null; }
+
+  async function searchLyrics() {
+    if (!songForm.artist || !songForm.title) {
+      toasts.add('Please enter both artist and title first', 'warning');
+      return;
+    }
+    
+    searchingLyrics = true;
+    try {
+      const artist = encodeURIComponent(songForm.artist.trim());
+      const title = encodeURIComponent(songForm.title.trim());
+      const response = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`);
+      const data = await response.json();
+      
+      if (data.lyrics) {
+        songForm.lyrics = data.lyrics;
+        toasts.add('Lyrics found and loaded!', 'success');
+      } else {
+        toasts.add('No lyrics found for this song', 'info');
+      }
+    } catch (error) {
+      toasts.add('Failed to search lyrics. Please try again.', 'error');
+    } finally {
+      searchingLyrics = false;
+    }
+  }
 
   async function saveSong() {
     saving = true;
@@ -160,6 +187,12 @@
         </div>
         <div class="field">
           <label>Lyrics</label>
+          <div style="margin-bottom:8px">
+            <button class="btn btn-ghost btn-sm" disabled={searchingLyrics || !songForm.artist || !songForm.title} 
+              on:click={searchLyrics}>
+              {searchingLyrics ? '🔍 Searching…' : '🔍 Search lyrics online'}
+            </button>
+          </div>
           <textarea class="input" bind:value={songForm.lyrics} rows="14"
             placeholder="Paste or type lyrics here…&#10;&#10;[Verse 1]&#10;…"></textarea>
         </div>
