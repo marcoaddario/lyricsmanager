@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     max_storage_mb: int = 2048
 
     app_name: str = "LyricsManager"
-    app_version: str = "1.0.0"
+    app_version: str = "1.0.1"
 
 
 @lru_cache
