@@ -79,6 +79,9 @@ class Setlist(Base):
         "SetlistItem", back_populates="setlist",
         cascade="all, delete-orphan", order_by="SetlistItem.position"
     )
+    shares: Mapped[List["SetlistShare"]] = relationship(
+        "SetlistShare", back_populates="setlist", cascade="all, delete-orphan"
+    )
 
 
 class SetlistItem(Base):
@@ -94,3 +97,18 @@ class SetlistItem(Base):
 
     setlist: Mapped["Setlist"] = relationship("Setlist", back_populates="items")
     song: Mapped["Song"] = relationship("Song", back_populates="setlist_items")
+
+
+class SetlistShare(Base):
+    """Shared access to a setlist with another user"""
+    __tablename__ = "setlist_shares"
+    __table_args__ = (UniqueConstraint("setlist_id", "shared_with_user_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    setlist_id: Mapped[int] = mapped_column(ForeignKey("setlists.id", ondelete="CASCADE"), nullable=False, index=True)
+    shared_with_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    permission: Mapped[str] = mapped_column(String(10), default="view", nullable=False)  # "view" or "edit"
+    shared_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    
+    setlist: Mapped["Setlist"] = relationship("Setlist", back_populates="shares")
+    shared_with_user: Mapped["User"] = relationship("User", foreign_keys=[shared_with_user_id])
