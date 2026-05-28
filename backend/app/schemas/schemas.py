@@ -3,7 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# ── Auth ─────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
     identifier: str  # Can be email or username
@@ -20,7 +20,7 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-# ── Users ─────────────────────────────────────────────────────────────────────
+# ── Users ────────────────────────────────────────────────────────────
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -56,7 +56,7 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
-# ── Libraries ─────────────────────────────────────────────────────────────────
+# ── Libraries ───────────────────────────────────────────────────────────
 
 class LibraryCreate(BaseModel):
     name: str
@@ -80,7 +80,7 @@ class LibraryOut(BaseModel):
     song_count: int = 0
 
 
-# ── Songs ─────────────────────────────────────────────────────────────────────
+# ── Songs ────────────────────────────────────────────────────────────
 
 class SongCreate(BaseModel):
     title: str
@@ -123,7 +123,7 @@ class SongSummary(BaseModel):
     updated_at: datetime
 
 
-# ── Setlists ──────────────────────────────────────────────────────────────────
+# ── Setlists ───────────────────────────────────────────────────────────
 
 class SetlistItemCreate(BaseModel):
     song_id: int
@@ -175,7 +175,28 @@ class SetlistSummary(BaseModel):
     song_count: int = 0
 
 
-# ── Storage ───────────────────────────────────────────────────────────────────
+# ── Sharing ──────────────────────────────────────────────────────────
+
+class SetlistShareCreate(BaseModel):
+    shared_with_user_id: int
+    permission: str = "view"  # "view" or "edit"
+
+
+class SetlistShareUpdate(BaseModel):
+    permission: str  # "view" or "edit"
+
+
+class SetlistShareOut(BaseModel):
+    model_config = {"from_attributes": True}
+    id: int
+    setlist_id: int
+    shared_with_user_id: int
+    permission: str
+    shared_at: datetime
+    shared_with_user: UserOut
+
+
+# ── Storage ───────────────────────────────────────────────────────────
 
 class StorageInfo(BaseModel):
     used_mb: float
