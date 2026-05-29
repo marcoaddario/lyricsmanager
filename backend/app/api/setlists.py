@@ -165,10 +165,15 @@ async def replace_items(
     await db.execute(delete(SetlistItem).where(SetlistItem.setlist_id == setlist_id))
 
     for item in items:
-        song = await db.get(Song, item.song_id)
-        if not song:
-            raise HTTPException(status_code=404, detail=f"Song {item.song_id} not found")
-        db.add(SetlistItem(setlist_id=setlist_id, **item.model_dump()))
+        item_data = item.model_dump(exclude_none=True)
+        if not item_data.get("is_service_card"):
+            song_id = item_data.get("song_id")
+            if not song_id:
+                raise HTTPException(status_code=400, detail="song_id is required for non-service-card items")
+            song = await db.get(Song, song_id)
+            if not song:
+                raise HTTPException(status_code=404, detail=f"Song {song_id} not found")
+        db.add(SetlistItem(setlist_id=setlist_id, **item_data))
 
     await db.flush()
     result = await db.execute(

@@ -90,13 +90,15 @@ class SetlistItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     setlist_id: Mapped[int] = mapped_column(ForeignKey("setlists.id", ondelete="CASCADE"), nullable=False)
-    song_id: Mapped[int] = mapped_column(ForeignKey("songs.id", ondelete="CASCADE"), nullable=False)
+    song_id: Mapped[Optional[int]] = mapped_column(ForeignKey("songs.id", ondelete="CASCADE"), nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     transpose_key: Mapped[Optional[str]] = mapped_column(String(10))
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    is_service_card: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    service_card_text: Mapped[Optional[str]] = mapped_column(Text)
 
     setlist: Mapped["Setlist"] = relationship("Setlist", back_populates="items")
-    song: Mapped["Song"] = relationship("Song", back_populates="setlist_items")
+    song: Mapped[Optional["Song"]] = relationship("Song", back_populates="setlist_items")
 
 
 class SetlistShare(Base):

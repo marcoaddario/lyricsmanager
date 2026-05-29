@@ -126,20 +126,24 @@ class SongSummary(BaseModel):
 # ── Setlists ───────────────────────────────────────────────────────────
 
 class SetlistItemCreate(BaseModel):
-    song_id: int
+    song_id: Optional[int] = None
     position: int
     transpose_key: Optional[str] = None
     notes: Optional[str] = None
+    is_service_card: bool = False
+    service_card_text: Optional[str] = None
 
 
 class SetlistItemOut(BaseModel):
     model_config = {"from_attributes": True}
     id: int
-    song_id: int
+    song_id: Optional[int]
     position: int
     transpose_key: Optional[str]
     notes: Optional[str]
-    song: SongOut
+    is_service_card: bool = False
+    service_card_text: Optional[str]
+    song: Optional[SongOut] = None
 
 
 class SetlistCreate(BaseModel):

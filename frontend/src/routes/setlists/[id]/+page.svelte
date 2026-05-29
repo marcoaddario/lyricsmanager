@@ -4,6 +4,7 @@
   import { api } from '$lib/services/api';
   import { offlineStore } from '$lib/services/offline';
   import { toasts, user } from '$lib/stores';
+  import LyricsRenderer from '$lib/components/LyricsRenderer.svelte';
 
   const id = Number($page.params.id);
 
@@ -49,6 +50,13 @@
   let sharingSaving = false;
   let searchTimeout: number | null = null;
 
+  // Service card state
+  let addingServiceCard = false;
+  let newServiceCardText = '';
+
+  // Preview
+  let previewIdx: number | null = null;
+
   onMount(async () => {
     [setlist, libraries] = await Promise.all([api.setlists.get(id), api.libraries.list()]);
     items = [...setlist.items];
@@ -82,6 +90,25 @@
   function addSong(song: any) {
     if (items.find(i => i.song_id === song.id)) { toasts.add('Song already in set list', 'info'); return; }
     items = [...items, { song_id: song.id, position: items.length + 1, song }];
+  }
+
+  function addServiceCard(text?: string) {
+    const cardText = text || newServiceCardText.trim();
+    if (!cardText) return;
+    items = [...items, {
+      is_service_card: true,
+      service_card_text: cardText,
+      position: items.length + 1,
+      song_id: null
+    }];
+    newServiceCardText = '';
+    addingServiceCard = false;
+  }
+
+  function updateServiceCardText(idx: number, text: string) {
+    items = items.map((item, i) =>
+      i === idx ? { ...item, service_card_text: text } : item
+    );
   }
 
   function removeItem(idx: number) {
@@ -132,9 +159,12 @@
     saving = true;
     try {
       const payload = items.map((item, i) => ({
-        song_id: item.song_id, position: i + 1,
+        song_id: item.is_service_card ? null : item.song_id,
+        position: i + 1,
         transpose_key: item.transpose_key || undefined,
-        notes: item.notes || undefined
+        notes: item.notes || undefined,
+        is_service_card: item.is_service_card || false,
+        service_card_text: item.is_service_card ? (item.service_card_text || '') : undefined
       }));
       setlist = await api.setlists.replaceItems(id, payload);
       items = [...setlist.items];
@@ -292,23 +322,28 @@
   </div>
 
   <div class="editor-layout">
-    <!-- Current set list -->
+    <!-- Set list items -->
     <div class="panel">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-        <h3>Set list ({items.length} songs)</h3>
-        {#if isOwner}
-          <button class="btn btn-ghost btn-sm" on:click={() => showSharing = !showSharing}>
-            {showSharing ? 'Close sharing' : '🔗 Share'}
-          </button>
-        {/if}
+        <h3>Set list ({items.length} items)</h3>
+        <div style="display:flex;gap:6px">
+          {#if isOwner}
+            <button class="btn btn-ghost btn-sm" on:click={() => showSharing = !showSharing}>
+              {showSharing ? 'Close sharing' : '🔗 Share'}
+            </button>
+          {/if}
+          {#if canEdit}
+            <button class="btn btn-ghost btn-sm" on:click={() => addingServiceCard = !addingServiceCard}>
+              📌 + Note
+            </button>
+          {/if}
+        </div>
       </div>
 
       <!-- Sharing panel (owner only) -->
       {#if showSharing && isOwner}
         <div class="sharing-panel">
           <h4 style="margin-bottom:0.75rem;font-size:0.9rem;color:var(--text2)">Share with users</h4>
-
-          <!-- Add share form -->
           <div class="share-form">
             <div class="share-search">
               <input
@@ -340,8 +375,6 @@
               {sharingSaving ? '…' : 'Share'}
             </button>
           </div>
-
-          <!-- Current shares -->
           {#if shares.length > 0}
             <div class="shares-list">
               {#each shares as share}
@@ -351,17 +384,11 @@
                     <span class="share-user-email">{share.shared_with_user.email}</span>
                   </div>
                   <div class="share-actions">
-                    <select
-                      class="input share-perm-toggle"
-                      value={share.permission}
-                      on:change={(e) => changePermission(share.id, e.currentTarget.value)}
-                    >
+                    <select class="input share-perm-toggle" value={share.permission} on:change={(e) => changePermission(share.id, e.currentTarget.value)}>
                       <option value="view">👁 View</option>
                       <option value="edit">✏ Edit</option>
                     </select>
-                    <button class="btn btn-ghost btn-sm" style="color:var(--error)" on:click={() => removeShare(share.id)}>
-                      ✕
-                    </button>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--error)" on:click={() => removeShare(share.id)}>✕</button>
                   </div>
                 </div>
               {/each}
@@ -372,12 +399,27 @@
         </div>
       {/if}
 
+      <!-- Add service card form -->
+      {#if addingServiceCard && canEdit}
+        <div class="add-card-form">
+          <textarea class="input" bind:value={newServiceCardText} rows="2"
+            placeholder="e.g. Begin of Set 1, Wait for guitar swap, End of Set 2…"
+            on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addServiceCard(); } }}>
+          </textarea>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-primary btn-sm" disabled={!newServiceCardText.trim()} on:click={() => addServiceCard()}>Add note</button>
+            <button class="btn btn-ghost btn-sm" on:click={() => { addingServiceCard = false; newServiceCardText = ''; }}>Cancel</button>
+          </div>
+        </div>
+      {/if}
+
       {#if items.length === 0}
-        <div style="color:var(--text3);text-align:center;padding:2rem">{canEdit ? 'Add songs from the library →' : 'No songs in this setlist.'}</div>
+        <div style="color:var(--text3);text-align:center;padding:2rem">{canEdit ? 'Add songs from the library or add a note →' : 'No items in this setlist.'}</div>
       {:else}
         <div class="setlist-items">
           {#each items as item, idx}
             <div class="set-item"
+                 class:set-item-service={item.is_service_card}
                  draggable={canEdit ? "true" : "false"}
                  on:dragstart={(e) => canEdit && onDragStart(e, idx)}
                  on:dragover={canEdit ? onDragOver : undefined}
@@ -385,10 +427,42 @@
                  on:dragend={canEdit ? onDragEnd : undefined}
                  class:dragging={draggedIndex === idx}>
               <span class="position mono">{idx + 1}</span>
-              <div class="set-item-info">
-                <span class="set-item-title">{item.song?.title || item.song_id}</span>
-                {#if item.song?.artist}<span class="set-item-artist">{item.song.artist}</span>{/if}
-              </div>
+              {#if item.is_service_card}
+                <div class="service-card-item">
+                  <div class="service-card-header">
+                    <span class="service-card-icon">📌</span>
+                    <span class="service-card-label">Note</span>
+                  </div>
+                  {#if canEdit}
+                    <input class="input service-card-input"
+                      value={item.service_card_text || ''}
+                      on:input={(e) => updateServiceCardText(idx, e.currentTarget.value)}
+                      placeholder="Note text…" />
+                  {:else}
+                    <span class="service-card-text">{item.service_card_text}</span>
+                  {/if}
+                  {#if previewIdx === idx}
+                    <div class="service-card-preview">
+                      <LyricsRenderer lyrics={item.service_card_text || ''} fontSize={0.75} />
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <div class="set-item-info" role="button" tabindex="0"
+                  on:click={() => previewIdx = previewIdx === idx ? null : idx}
+                  on:keydown={(e) => e.key === 'Enter' && (previewIdx = previewIdx === idx ? null : idx)}>
+                  <span class="set-item-title">{item.song?.title || item.song_id}</span>
+                  {#if item.song?.artist}<span class="set-item-artist">{item.song.artist}</span>{/if}
+                </div>
+                {#if item.song?.key}
+                  <span class="badge badge-accent" style="font-size:0.65rem">{item.transpose_key || item.song.key}</span>
+                {/if}
+                {#if previewIdx === idx && item.song?.lyrics}
+                  <div class="lyrics-preview">
+                    <LyricsRenderer lyrics={item.song.lyrics} fontSize={0.75} />
+                  </div>
+                {/if}
+              {/if}
               {#if canEdit}
                 <div class="set-item-actions">
                   <button class="btn btn-ghost btn-sm" on:click={() => moveUp(idx)} disabled={idx === 0}>↑</button>
@@ -463,9 +537,7 @@
   .share-search {
     flex: 1; min-width: 180px; position: relative;
   }
-  .share-perm-select {
-    width: 130px; flex-shrink: 0;
-  }
+  .share-perm-select { width: 130px; flex-shrink: 0; }
   .search-results {
     position: absolute; top: 100%; left: 0; right: 0;
     background: var(--bg2); border: 1px solid var(--border2);
@@ -481,34 +553,28 @@
     font-size: 0.82rem;
   }
   .search-result-item:hover { background: var(--bg4); }
-  .searching-hint {
-    font-size: 0.75rem; color: var(--text3);
-    padding: 4px 0;
-  }
-  .shares-list {
-    display: flex; flex-direction: column; gap: 6px;
-    margin-top: 0.75rem;
-  }
+  .searching-hint { font-size: 0.75rem; color: var(--text3); padding: 4px 0; }
+  .shares-list { display: flex; flex-direction: column; gap: 6px; margin-top: 0.75rem; }
   .share-item {
     display: flex; align-items: center; justify-content: space-between;
     gap: 8px; padding: 0.5rem 0.65rem;
     background: var(--bg2); border: 1px solid var(--border);
     border-radius: 6px;
   }
-  .share-user {
-    display: flex; flex-direction: column; gap: 1px;
-    min-width: 0;
-  }
+  .share-user { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .share-user-name { font-weight: 500; font-size: 0.82rem; }
   .share-user-email { font-size: 0.75rem; color: var(--text3); }
-  .share-actions {
-    display: flex; align-items: center; gap: 6px;
-    flex-shrink: 0;
-  }
-  .share-perm-toggle {
-    width: 100px; font-size: 0.75rem;
+  .share-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .share-perm-toggle { width: 100px; font-size: 0.75rem; }
+
+  /* Add service card form */
+  .add-card-form {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.75rem;
+    margin-bottom: 0.75rem;
   }
 
+  /* Setlist items */
   .setlist-items { display: flex; flex-direction: column; gap: 6px; }
   .set-item {
     display: flex; align-items: center; gap: 10px;
@@ -516,15 +582,44 @@
     padding: 0.5rem 0.75rem;
     cursor: grab;
   }
-  .set-item.dragging {
-    opacity: 0.5;
-    transform: rotate(2deg);
+  .set-item.dragging { opacity: 0.5; transform: rotate(2deg); }
+  .set-item-service {
+    background: color-mix(in srgb, #8b5cf6 12%, var(--bg3));
+    border-color: color-mix(in srgb, #8b5cf6 30%, var(--border));
   }
-  .position { color: var(--text3); font-size: 0.8rem; min-width: 20px; }
-  .set-item-info { flex: 1; min-width: 0; }
+  .position { color: var(--text3); font-size: 0.8rem; min-width: 20px; font-family: 'DM Mono', monospace; }
+  .set-item-info { flex: 1; min-width: 0; cursor: pointer; }
   .set-item-title { font-weight: 500; font-size: 0.875rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .set-item-artist { color: var(--text2); font-size: 0.78rem; }
   .set-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* Service card item */
+  .service-card-item { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .service-card-header { display: flex; align-items: center; gap: 4px; }
+  .service-card-icon { font-size: 0.82rem; }
+  .service-card-label { font-size: 0.7rem; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .service-card-input {
+    font-size: 0.82rem; padding: 0.3rem 0.5rem;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 4px; width: 100%;
+  }
+  .service-card-text { font-size: 0.82rem; color: var(--text); }
+  .service-card-preview {
+    margin-top: 4px; padding: 0.5rem;
+    background: var(--bg2); border-radius: 4px;
+    max-height: 120px; overflow-y: auto;
+  }
+
+  /* Lyrics preview */
+  .lyrics-preview {
+    position: absolute; left: 0; right: 0; top: 100%;
+    z-index: 20; margin-top: 4px;
+    padding: 0.75rem; border-radius: 8px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    max-height: 200px; overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .set-item { position: relative; }
 
   .song-list { display: flex; flex-direction: column; gap: 4px; max-height: 400px; overflow-y: auto; }
   .song-row {

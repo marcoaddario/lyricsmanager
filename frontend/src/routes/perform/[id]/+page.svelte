@@ -4,6 +4,7 @@
   import { isOnline } from '$lib/stores';
   import { api } from '$lib/services/api';
   import { offlineStore } from '$lib/services/offline';
+  import LyricsRenderer from '$lib/components/LyricsRenderer.svelte';
 
   const id = Number($page.params.id);
 
@@ -14,7 +15,6 @@
   let fontSize = 1.2; // rem
 
   onMount(async () => {
-    // Try online first, then offline cache
     try {
       if ($isOnline) {
         setlist = await api.setlists.get(id);
@@ -34,6 +34,8 @@
 
   $: current = setlist?.items?.[currentIdx];
   $: total = setlist?.items?.length || 0;
+  $: isServiceCard = current?.is_service_card === true;
+  $: isSong = !isServiceCard && current?.song;
 
   function next() { if (currentIdx < total - 1) currentIdx++; }
   function prev() { if (currentIdx > 0) currentIdx--; }
@@ -66,30 +68,45 @@
       </div>
     </header>
 
-    <!-- Song info bar -->
-    <div class="song-info-bar">
-      <div>
-        <span class="song-num">{currentIdx + 1} / {total}</span>
-        <strong class="song-title-perf">{current?.song?.title}</strong>
-        {#if current?.song?.artist}<span class="song-artist-perf">{current.song.artist}</span>{/if}
+    <!-- Content area -->
+    {#if isServiceCard}
+      <!-- Service card display -->
+      <div class="service-card-area">
+        <div class="service-card-icon">📌</div>
+        <div class="service-card-text">{current.service_card_text || ''}</div>
+        {#if current.notes}
+          <div class="service-card-notes">{current.notes}</div>
+        {/if}
       </div>
-      {#if current?.song?.key}
-        <span class="badge badge-accent" style="font-size:0.75rem">Key: {current.transpose_key || current.song.key}</span>
-      {/if}
-    </div>
-
-    <!-- Lyrics -->
-    <div class="lyrics-area" style="font-size: {fontSize}rem">
-      <pre class="lyrics-text">{current?.song?.lyrics || '(No lyrics)'}</pre>
-    </div>
+    {:else if isSong}
+      <!-- Song info bar -->
+      <div class="song-info-bar">
+        <div>
+          <span class="song-num">{currentIdx + 1} / {total}</span>
+          <strong class="song-title-perf">{current.song.title}</strong>
+          {#if current.song.artist}<span class="song-artist-perf">{current.song.artist}</span>{/if}
+        </div>
+        {#if current.song.key}
+          <span class="badge badge-accent" style="font-size:0.75rem">Key: {current.transpose_key || current.song.key}</span>
+        {/if}
+      </div>
+      <!-- Lyrics -->
+      <div class="lyrics-area">
+        <LyricsRenderer lyrics={current.song.lyrics || ''} {fontSize} />
+      </div>
+    {:else}
+      <div class="center" style="flex:1">(No content)</div>
+    {/if}
 
     <!-- Nav bar -->
     <footer class="perf-footer">
-      <!-- Song selector pills -->
       <div class="song-pills">
         {#each setlist.items as item, idx}
-          <button class="pill" class:active={idx === currentIdx} on:click={() => currentIdx = idx}>
-            {idx + 1}
+          <button class="pill"
+            class:active={idx === currentIdx}
+            class:pill-service={item.is_service_card}
+            on:click={() => currentIdx = idx}>
+            {item.is_service_card ? '📌' : idx + 1}
           </button>
         {/each}
       </div>
@@ -142,11 +159,30 @@
   .lyrics-area {
     flex: 1; overflow-y: auto; padding: 1.5rem 1.75rem;
   }
-  .lyrics-text {
-    font-family: 'DM Mono', monospace;
-    white-space: pre-wrap; line-height: 1.9;
+
+  /* Service card */
+  .service-card-area {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 2.5rem 2rem;
+    text-align: center;
+  }
+  .service-card-icon {
+    font-size: 3rem; margin-bottom: 1.5rem;
+    opacity: 0.7;
+  }
+  .service-card-text {
+    font-size: {fontSize}rem;
+    font-weight: 600;
+    line-height: 1.5;
+    max-width: 600px;
     color: var(--lyrics-text);
-    font-size: inherit;
+  }
+  .service-card-notes {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text3);
+    max-width: 500px;
   }
 
   .perf-footer {
@@ -162,6 +198,8 @@
     flex-shrink: 0;
   }
   .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pill-service.active { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
+  .pill-service { border-color: var(--border2); }
   .nav-btns { display: flex; gap: 8px; flex-shrink: 0; }
   .nav-btn {
     padding: 0.5rem 1.1rem; border-radius: 8px;
@@ -174,6 +212,7 @@
   .center {
     display: flex; align-items: center; justify-content: center;
     height: 100dvh; color: var(--text2); gap: 12px;
+    flex-shrink: 0;
   }
   .error { color: var(--error); }
 </style>

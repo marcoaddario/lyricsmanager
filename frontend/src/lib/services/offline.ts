@@ -43,7 +43,9 @@ export const offlineStore = {
     await db.put('setlists', record);
     // Also cache individual songs for quick lookup
     for (const item of setlist.items || []) {
-      await db.put('songs', item.song);
+      if (item.song) {
+        await db.put('songs', item.song);
+      }
     }
   },
 
