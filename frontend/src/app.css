@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
 
-/* ── Base reset ───────────────────────────────────────────────────────── */
+/* ── Base reset ────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; overflow-y: scroll; }
 body {
@@ -16,7 +16,7 @@ a { color: var(--accent); text-decoration: none; }
 button { cursor: pointer; font-family: inherit; }
 input, textarea, select { font-family: inherit; }
 
-/* ── Theme tokens ───────────────────────────────────────────────────────── */
+/* ── Theme tokens ─────────────────────────────────────────────────────────── */
 :root, [data-theme="dark"] {
   --bg: #0f0f0f;
   --bg2: #161616;
@@ -117,7 +117,7 @@ input, textarea, select { font-family: inherit; }
   --lyrics-text: #eedcb0;
 }
 
-/* ── Layout ──────────────────────────────────────────────────────────── */
+/* ── Layout ────────────────────────────────────────────────────────────────── */
 .app-shell {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -130,13 +130,13 @@ input, textarea, select { font-family: inherit; }
   .sidebar.open { display: flex; position: fixed; inset: 0; z-index: 100; }
 }
 
-/* ── Typography ──────────────────────────────────────────────────────── */
+/* ── Typography ────────────────────────────────────────────────────────────── */
 .mono { font-family: 'DM Mono', monospace; }
 h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
 h2 { font-size: 1.25rem; font-weight: 500; }
 h3 { font-size: 1rem; font-weight: 500; }
 
-/* ── Cards ───────────────────────────────────────────────────────────── */
+/* ── Cards ────────────────────────────────────────────────────────────────── */
 .card {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -151,7 +151,7 @@ h3 { font-size: 1rem; font-weight: 500; }
   transform: translateY(-1px);
 }
 
-/* ── Buttons ──────────────────────────────────────────────────────────── */
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 0.45em 1em; border-radius: 8px; font-size: 0.875rem;
@@ -171,7 +171,7 @@ h3 { font-size: 1rem; font-weight: 500; }
 .btn-sm { padding: 0.3em 0.75em; font-size: 0.8rem; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Forms ───────────────────────────────────────────────────────────── */
+/* ── Forms ────────────────────────────────────────────────────────────────── */
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 1rem; }
 .field label { font-size: 0.8rem; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
 .input {
@@ -184,7 +184,7 @@ h3 { font-size: 1rem; font-weight: 500; }
 .input::placeholder { color: var(--text3); }
 textarea.input { resize: vertical; min-height: 120px; line-height: 1.6; font-family: 'DM Mono', monospace; font-size: 0.85rem; }
 
-/* ── Badges ──────────────────────────────────────────────────────────── */
+/* ── Badges ────────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex; align-items: center; padding: 2px 8px;
   border-radius: 20px; font-size: 0.7rem; font-weight: 600;
@@ -194,7 +194,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.6; font-fam
 .badge-success { background: rgba(74,222,128,0.1); color: var(--success); }
 .badge-error { background: rgba(248,113,113,0.1); color: var(--error); }
 
-/* ── Lyrics display ──────────────────────────────────────────────────── */
+/* ── Lyrics display ────────────────────────────────────────────────────────── */
 .lyrics-viewer {
   background: var(--lyrics-bg); color: var(--lyrics-text);
   font-family: 'DM Mono', monospace;
@@ -205,14 +205,14 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.6; font-fam
   overflow-y: auto;
 }
 
-/* ── Offline banner ──────────────────────────────────────────────────── */
+/* ── Offline banner ────────────────────────────────────────────────────────── */
 .offline-banner {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
   background: var(--warning); color: #000;
   text-align: center; padding: 6px; font-size: 0.8rem; font-weight: 600;
 }
 
-/* ── Scrollbar ──────────────────────────────────────────────────────── */
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }

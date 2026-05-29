@@ -196,7 +196,7 @@ class SetlistShareOut(BaseModel):
     shared_with_user: UserOut
 
 
-# ── Storage ───────────────────────────────────────────────────────────
+# ── Storage ──────────────────────────────────────────────────────────
 
 class StorageInfo(BaseModel):
     used_mb: float

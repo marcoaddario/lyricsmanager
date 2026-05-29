@@ -68,7 +68,7 @@ async function request(path: string, init: RequestInit = {}, retry = true): Prom
   return res.json();
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────
+// ── Auth ────────────────────────────────────────────────────────────
 export const api = {
   auth: {
     login: async (identifier: string, password: string) => {
@@ -82,7 +82,7 @@ export const api = {
     logout: () => clearTokens()
   },
 
-  // ── Users ────────────────────────────────────────────────────────────
+  // ── Users ───────────────────────────────────────────────────────────
   users: {
     list: () => request('/users/'),
     create: (body: any) => request('/users/', { method: 'POST', body: JSON.stringify(body) }),
@@ -92,7 +92,7 @@ export const api = {
     changePassword: (id: number, body: any) => request(`/users/${id}/change-password`, { method: 'POST', body: JSON.stringify(body) })
   },
 
-  // ── Libraries ────────────────────────────────────────────────────────────
+  // ── Libraries ──────────────────────────────────────────────────────────
   libraries: {
     list: () => request('/libraries/'),
     create: (body: any) => request('/libraries/', { method: 'POST', body: JSON.stringify(body) }),
@@ -101,7 +101,7 @@ export const api = {
     delete: (id: number) => request(`/libraries/${id}`, { method: 'DELETE' })
   },
 
-  // ── Songs ────────────────────────────────────────────────────────────
+  // ── Songs ───────────────────────────────────────────────────────────
   songs: {
     list: (libraryId: number, q?: string) =>
       request(`/libraries/${libraryId}/songs/${q ? `?q=${encodeURIComponent(q)}` : ''}`),
