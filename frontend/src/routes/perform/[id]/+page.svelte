@@ -73,7 +73,7 @@
       <!-- Service card display -->
       <div class="service-card-area">
         <div class="service-card-icon">📌</div>
-        <div class="service-card-text">{current.service_card_text || ''}</div>
+        <div class="service-card-text" style="font-size: {fontSize}rem">{current.service_card_text || ''}</div>
         {#if current.notes}
           <div class="service-card-notes">{current.notes}</div>
         {/if}
@@ -172,7 +172,6 @@
     opacity: 0.7;
   }
   .service-card-text {
-    font-size: {fontSize}rem;
     font-weight: 600;
     line-height: 1.5;
     max-width: 600px;

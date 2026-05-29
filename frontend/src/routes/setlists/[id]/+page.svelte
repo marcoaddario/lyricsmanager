@@ -416,9 +416,9 @@
       {#if items.length === 0}
         <div style="color:var(--text3);text-align:center;padding:2rem">{canEdit ? 'Add songs from the library or add a note →' : 'No items in this setlist.'}</div>
       {:else}
-        <div class="setlist-items">
+        <div class="setlist-items" role="list">
           {#each items as item, idx}
-            <div class="set-item"
+            <div class="set-item" role="listitem"
                  class:set-item-service={item.is_service_card}
                  draggable={canEdit ? "true" : "false"}
                  on:dragstart={(e) => canEdit && onDragStart(e, idx)}

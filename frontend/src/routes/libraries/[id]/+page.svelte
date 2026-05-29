@@ -208,7 +208,7 @@
                 <span class="markup-code">**bold**</span><span>Bold text</span>
                 <span class="markup-code">*italic*</span><span>Italic text</span>
                 <span class="markup-code">[solo]</span><span>Instrument badge (guitar, drums, keys, bass, vocal)</span>
-                <span class="markup-code">{color:red}text{/color}</span><span>Custom colored text</span>
+                <span class="markup-code">{`{color:red}`}text{`{/color}`}</span><span>Custom colored text</span>
               </div>
             </div>
           {/if}
