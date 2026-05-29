@@ -85,6 +85,8 @@ export const api = {
   // ── Users ───────────────────────────────────────────────────────────
   users: {
     list: () => request('/users/'),
+    search: (q: string, limit?: number) =>
+      request(`/users/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`),
     create: (body: any) => request('/users/', { method: 'POST', body: JSON.stringify(body) }),
     get: (id: number) => request(`/users/${id}`),
     update: (id: number, body: any) => request(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),

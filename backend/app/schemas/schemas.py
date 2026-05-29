@@ -163,6 +163,7 @@ class SetlistOut(BaseModel):
     owner_id: int
     created_at: datetime
     items: List[SetlistItemOut] = []
+    permission: Optional[str] = None  # "view" or "edit" for shared, None for owner
 
 
 class SetlistSummary(BaseModel):
@@ -173,6 +174,8 @@ class SetlistSummary(BaseModel):
     event_date: Optional[datetime]
     created_at: datetime
     song_count: int = 0
+    permission: Optional[str] = None  # "view" or "edit" for shared, None for owner
+    owner_name: Optional[str] = None
 
 
 # ── Sharing ──────────────────────────────────────────────────────────

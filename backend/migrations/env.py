@@ -10,7 +10,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from app.core.database import Base
-from app.models.user import User, Library, Song, Setlist, SetlistItem  # noqa
+from app.models.user import User, Library, Song, Setlist, SetlistItem, SetlistShare  # noqa
 
 target_metadata = Base.metadata
 

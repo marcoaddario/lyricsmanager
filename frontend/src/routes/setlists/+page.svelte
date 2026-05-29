@@ -11,6 +11,11 @@
   let form = { name: '', description: '', event_date: '' };
   let saving = false;
 
+  let ownedSetlists: any[] = [];
+  let sharedSetlists: any[] = [];
+  $: ownedSetlists = setlists.filter((s: any) => s.permission === null);
+  $: sharedSetlists = setlists.filter((s: any) => s.permission !== null);
+
   onMount(async () => {
     try { setlists = await api.setlists.list(); } catch {}
     const cached = await offlineStore.listSetlists();
@@ -99,36 +104,82 @@
     <p>No set lists yet. Create your first one!</p>
   </div>
 {:else}
-  <div class="setlist-grid">
-    {#each setlists as sl}
-      <div class="card card-hover setlist-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <a href="/setlists/{sl.id}" style="font-weight:600;color:var(--text)">{sl.name}</a>
-          <span class="badge badge-accent">{sl.song_count} songs</span>
-        </div>
-        {#if sl.description}
-          <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px">{sl.description}</p>
-        {/if}
-        {#if sl.event_date}
-          <p style="color:var(--text3);font-size:0.78rem;margin-bottom:10px">
-            📅 {new Date(sl.event_date).toLocaleDateString(undefined, {weekday:'short',year:'numeric',month:'short',day:'numeric'})}
-          </p>
-        {/if}
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <a href="/setlists/{sl.id}" class="btn btn-ghost btn-sm">Edit</a>
-          <a href="/perform/{sl.id}" class="btn btn-primary btn-sm">🎤 Perform</a>
-          {#if downloaded.has(sl.id)}
-            <button class="btn btn-ghost btn-sm" style="color:var(--success)"
-              on:click={() => removeOffline(sl.id)}>✓ Offline</button>
-          {:else}
-            <button class="btn btn-ghost btn-sm" on:click={() => downloadSetlist(sl.id)}>⬇ Download</button>
+  <!-- Owned setlists -->
+  {#if ownedSetlists.length > 0}
+    <div class="setlist-grid">
+      {#each ownedSetlists as sl}
+        <div class="card card-hover setlist-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <a href="/setlists/{sl.id}" style="font-weight:600;color:var(--text)">{sl.name}</a>
+            <span class="badge badge-accent">{sl.song_count} songs</span>
+          </div>
+          {#if sl.description}
+            <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px">{sl.description}</p>
           {/if}
-          <button class="btn btn-ghost btn-sm" style="color:var(--error);margin-left:auto"
-            on:click={() => deleteSetlist(sl.id)}>Delete</button>
+          {#if sl.event_date}
+            <p style="color:var(--text3);font-size:0.78rem;margin-bottom:10px">
+              📅 {new Date(sl.event_date).toLocaleDateString(undefined, {weekday:'short',year:'numeric',month:'short',day:'numeric'})}
+            </p>
+          {/if}
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <a href="/setlists/{sl.id}" class="btn btn-ghost btn-sm">Edit</a>
+            <a href="/perform/{sl.id}" class="btn btn-primary btn-sm">🎤 Perform</a>
+            {#if downloaded.has(sl.id)}
+              <button class="btn btn-ghost btn-sm" style="color:var(--success)"
+                on:click={() => removeOffline(sl.id)}>✓ Offline</button>
+            {:else}
+              <button class="btn btn-ghost btn-sm" on:click={() => downloadSetlist(sl.id)}>⬇ Download</button>
+            {/if}
+            <button class="btn btn-ghost btn-sm" style="color:var(--error);margin-left:auto"
+              on:click={() => deleteSetlist(sl.id)}>Delete</button>
+          </div>
         </div>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- Shared setlists -->
+  {#if sharedSetlists.length > 0}
+    <h2 style="margin:1.5rem 0 0.75rem;font-size:1.1rem;color:var(--text2)">🔗 Shared with me</h2>
+    <div class="setlist-grid">
+      {#each sharedSetlists as sl}
+        <div class="card card-hover setlist-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <a href="/setlists/{sl.id}" style="font-weight:600;color:var(--text)">{sl.name}</a>
+            <span class="badge badge-accent">{sl.song_count} songs</span>
+          </div>
+          {#if sl.description}
+            <p style="color:var(--text2);font-size:0.82rem;margin-bottom:8px">{sl.description}</p>
+          {/if}
+          {#if sl.event_date}
+            <p style="color:var(--text3);font-size:0.78rem;margin-bottom:10px">
+              📅 {new Date(sl.event_date).toLocaleDateString(undefined, {weekday:'short',year:'numeric',month:'short',day:'numeric'})}
+            </p>
+          {/if}
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            {#if sl.permission === 'edit'}
+              <span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">✏ Edit access</span>
+            {:else}
+              <span class="badge" style="background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640">👁 View only</span>
+            {/if}
+            {#if sl.owner_name}
+              <span style="color:var(--text3);font-size:0.78rem">by {sl.owner_name}</span>
+            {/if}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <a href="/setlists/{sl.id}" class="btn btn-ghost btn-sm">Open</a>
+            <a href="/perform/{sl.id}" class="btn btn-primary btn-sm">🎤 Perform</a>
+            {#if downloaded.has(sl.id)}
+              <button class="btn btn-ghost btn-sm" style="color:var(--success)"
+                on:click={() => removeOffline(sl.id)}>✓ Offline</button>
+            {:else}
+              <button class="btn btn-ghost btn-sm" on:click={() => downloadSetlist(sl.id)}>⬇ Download</button>
+            {/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
 {/if}
 
 <style>
