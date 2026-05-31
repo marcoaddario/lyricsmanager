@@ -3,7 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr, field_validator
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# ── Auth ─────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
     identifier: str  # Can be email or username
@@ -20,7 +20,7 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-# ── Users ─────────────────────────────────────────────────────────────────────
+# ── Users ────────────────────────────────────────────────────────────
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -56,7 +56,7 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
-# ── Libraries ─────────────────────────────────────────────────────────────────
+# ── Libraries ───────────────────────────────────────────────────────────
 
 class LibraryCreate(BaseModel):
     name: str
@@ -80,7 +80,7 @@ class LibraryOut(BaseModel):
     song_count: int = 0
 
 
-# ── Songs ─────────────────────────────────────────────────────────────────────
+# ── Songs ────────────────────────────────────────────────────────────
 
 class SongCreate(BaseModel):
     title: str
@@ -123,23 +123,27 @@ class SongSummary(BaseModel):
     updated_at: datetime
 
 
-# ── Setlists ──────────────────────────────────────────────────────────────────
+# ── Setlists ───────────────────────────────────────────────────────────
 
 class SetlistItemCreate(BaseModel):
-    song_id: int
+    song_id: Optional[int] = None
     position: int
     transpose_key: Optional[str] = None
     notes: Optional[str] = None
+    is_service_card: bool = False
+    service_card_text: Optional[str] = None
 
 
 class SetlistItemOut(BaseModel):
     model_config = {"from_attributes": True}
     id: int
-    song_id: int
+    song_id: Optional[int]
     position: int
     transpose_key: Optional[str]
     notes: Optional[str]
-    song: SongOut
+    is_service_card: bool = False
+    service_card_text: Optional[str]
+    song: Optional[SongOut] = None
 
 
 class SetlistCreate(BaseModel):
@@ -163,6 +167,7 @@ class SetlistOut(BaseModel):
     owner_id: int
     created_at: datetime
     items: List[SetlistItemOut] = []
+    permission: Optional[str] = None  # "view" or "edit" for shared, None for owner
 
 
 class SetlistSummary(BaseModel):
@@ -173,9 +178,32 @@ class SetlistSummary(BaseModel):
     event_date: Optional[datetime]
     created_at: datetime
     song_count: int = 0
+    permission: Optional[str] = None  # "view" or "edit" for shared, None for owner
+    owner_name: Optional[str] = None
 
 
-# ── Storage ───────────────────────────────────────────────────────────────────
+# ── Sharing ──────────────────────────────────────────────────────────
+
+class SetlistShareCreate(BaseModel):
+    shared_with_user_id: int
+    permission: str = "view"  # "view" or "edit"
+
+
+class SetlistShareUpdate(BaseModel):
+    permission: str  # "view" or "edit"
+
+
+class SetlistShareOut(BaseModel):
+    model_config = {"from_attributes": True}
+    id: int
+    setlist_id: int
+    shared_with_user_id: int
+    permission: str
+    shared_at: datetime
+    shared_with_user: UserOut
+
+
+# ── Storage ──────────────────────────────────────────────────────────
 
 class StorageInfo(BaseModel):
     used_mb: float

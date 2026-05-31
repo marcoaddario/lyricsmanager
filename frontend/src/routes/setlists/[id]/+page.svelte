@@ -3,7 +3,8 @@
   import { page } from '$app/stores';
   import { api } from '$lib/services/api';
   import { offlineStore } from '$lib/services/offline';
-  import { toasts } from '$lib/stores';
+  import { toasts, user } from '$lib/stores';
+  import LyricsRenderer from '$lib/components/LyricsRenderer.svelte';
 
   const id = Number($page.params.id);
 
@@ -26,6 +27,36 @@
   // Editable items list (positions are indices+1)
   let items: any[] = [];
 
+  // Computed
+  let isOwner = false;
+  let canEdit = false;
+  let isViewOnly = false;
+  let ownerLabel = '';
+  $: {
+    isOwner = setlist && setlist.permission === null;
+    canEdit = isOwner || setlist?.permission === 'edit';
+    isViewOnly = setlist?.permission === 'view';
+    ownerLabel = setlist?.owner_name || '';
+  }
+
+  // Sharing state
+  let shares: any[] = [];
+  let showSharing = false;
+  let userSearchQuery = '';
+  let userSearchResults: any[] = [];
+  let searchingUsers = false;
+  let selectedUser: any | null = null;
+  let sharePermission = 'view';
+  let sharingSaving = false;
+  let searchTimeout: number | null = null;
+
+  // Service card state
+  let addingServiceCard = false;
+  let newServiceCardText = '';
+
+  // Preview
+  let previewIdx: number | null = null;
+
   onMount(async () => {
     [setlist, libraries] = await Promise.all([api.setlists.get(id), api.libraries.list()]);
     items = [...setlist.items];
@@ -36,8 +67,17 @@
     };
     if (libraries.length > 0) { selectedLibrary = libraries[0].id; await loadSongs(); }
     isDownloaded = await offlineStore.isSetlistDownloaded(id);
+    if (isOwner) {
+      loadShares();
+    }
     loading = false;
   });
+
+  async function loadShares() {
+    try {
+      shares = await api.setlists.listShares(id);
+    } catch {}
+  }
 
   async function loadSongs() {
     if (!selectedLibrary) return;
@@ -50,6 +90,25 @@
   function addSong(song: any) {
     if (items.find(i => i.song_id === song.id)) { toasts.add('Song already in set list', 'info'); return; }
     items = [...items, { song_id: song.id, position: items.length + 1, song }];
+  }
+
+  function addServiceCard(text?: string) {
+    const cardText = text || newServiceCardText.trim();
+    if (!cardText) return;
+    items = [...items, {
+      is_service_card: true,
+      service_card_text: cardText,
+      position: items.length + 1,
+      song_id: null
+    }];
+    newServiceCardText = '';
+    addingServiceCard = false;
+  }
+
+  function updateServiceCardText(idx: number, text: string) {
+    items = items.map((item, i) =>
+      i === idx ? { ...item, service_card_text: text } : item
+    );
   }
 
   function removeItem(idx: number) {
@@ -71,7 +130,6 @@
   }
 
   function onDragStart(event: DragEvent, idx: number) {
-    // Don't start drag if clicking on buttons
     if ((event.target as HTMLElement).tagName === 'BUTTON') return;
     draggedIndex = idx;
     event.dataTransfer!.effectAllowed = 'move';
@@ -85,7 +143,7 @@
   function onDrop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
     if (draggedIndex === null || draggedIndex === dropIndex) return;
-    
+
     const newItems = [...items];
     const [draggedItem] = newItems.splice(draggedIndex, 1);
     newItems.splice(dropIndex, 0, draggedItem);
@@ -101,9 +159,12 @@
     saving = true;
     try {
       const payload = items.map((item, i) => ({
-        song_id: item.song_id, position: i + 1,
+        song_id: item.is_service_card ? null : item.song_id,
+        position: i + 1,
         transpose_key: item.transpose_key || undefined,
-        notes: item.notes || undefined
+        notes: item.notes || undefined,
+        is_service_card: item.is_service_card || false,
+        service_card_text: item.is_service_card ? (item.service_card_text || '') : undefined
       }));
       setlist = await api.setlists.replaceItems(id, payload);
       items = [...setlist.items];
@@ -135,6 +196,75 @@
       toasts.add('Downloaded for offline use ✓', 'success');
     } catch (e: any) { toasts.add(e.message, 'error'); }
   }
+
+  // ── Sharing functions ──────────────────────────────────────────────
+
+  function onUserSearchInput(query: string) {
+    userSearchQuery = query;
+    selectedUser = null;
+    if (searchTimeout) clearTimeout(searchTimeout);
+    if (query.length < 2) {
+      userSearchResults = [];
+      return;
+    }
+    searchTimeout = window.setTimeout(async () => {
+      searchingUsers = true;
+      try {
+        const results = await api.users.search(query);
+        userSearchResults = results.filter((u: any) => u.id !== $user?.id);
+      } catch {
+        userSearchResults = [];
+      } finally {
+        searchingUsers = false;
+      }
+    }, 300);
+  }
+
+  function selectUser(u: any) {
+    selectedUser = u;
+    userSearchQuery = u.display_name || u.username;
+    userSearchResults = [];
+  }
+
+  async function addShare() {
+    if (!selectedUser) return;
+    sharingSaving = true;
+    try {
+      await api.setlists.addShare(id, {
+        shared_with_user_id: selectedUser.id,
+        permission: sharePermission
+      });
+      toasts.add('Shared ✓', 'success');
+      selectedUser = null;
+      userSearchQuery = '';
+      sharePermission = 'view';
+      await loadShares();
+    } catch (e: any) {
+      toasts.add(e.message, 'error');
+    } finally {
+      sharingSaving = false;
+    }
+  }
+
+  async function changePermission(shareId: number, newPermission: string) {
+    try {
+      await api.setlists.updateShare(id, shareId, { permission: newPermission });
+      toasts.add('Permission updated ✓', 'success');
+      await loadShares();
+    } catch (e: any) {
+      toasts.add(e.message, 'error');
+    }
+  }
+
+  async function removeShare(shareId: number) {
+    try {
+      await api.setlists.removeShare(id, shareId);
+      toasts.add('Share removed', 'info');
+      await loadShares();
+    } catch (e: any) {
+      toasts.add(e.message, 'error');
+    }
+  }
 </script>
 
 <svelte:head><title>{setlist?.name || 'Set List'} — Lyrics Manager</title></svelte:head>
@@ -142,9 +272,21 @@
 {#if loading}
   <p style="color:var(--text2)">Loading…</p>
 {:else}
+  <!-- Shared banner -->
+  {#if !isOwner}
+    <div class="shared-banner">
+      <span>🔗 Shared with you by <strong>{ownerLabel}</strong></span>
+      {#if setlist.permission === 'edit'}
+        <span class="badge badge-warning" style="margin-left:8px">Edit access</span>
+      {:else}
+        <span class="badge badge-info" style="margin-left:8px">View only</span>
+      {/if}
+    </div>
+  {/if}
+
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap">
     <a href="/setlists" style="color:var(--text2);font-size:0.85rem">← Back</a>
-    {#if editingMetadata}
+    {#if editingMetadata && canEdit}
       <div style="flex:1">
         <div class="field" style="margin-bottom:0.5rem">
           <input class="input" bind:value={metadataForm.name} placeholder="Setlist name" />
@@ -162,7 +304,9 @@
       </button>
     {:else}
       <h1 style="flex:1">{setlist.name}</h1>
-      <button class="btn btn-ghost" on:click={() => editingMetadata = true}>✏ Edit metadata</button>
+      {#if canEdit}
+        <button class="btn btn-ghost" on:click={() => editingMetadata = true}>✏ Edit metadata</button>
+      {/if}
     {/if}
     <a href="/perform/{id}" class="btn btn-primary">🎤 Perform</a>
     {#if isDownloaded}
@@ -170,72 +314,199 @@
     {:else}
       <button class="btn btn-ghost" on:click={downloadOffline}>⬇ Save offline</button>
     {/if}
-    <button class="btn btn-primary" disabled={saving} on:click={save}>
-      {saving ? 'Saving…' : 'Save order'}
-    </button>
+    {#if canEdit}
+      <button class="btn btn-primary" disabled={saving} on:click={save}>
+        {saving ? 'Saving…' : 'Save order'}
+      </button>
+    {/if}
   </div>
 
   <div class="editor-layout">
-    <!-- Current set list -->
+    <!-- Set list items -->
     <div class="panel">
-      <h3 style="margin-bottom:1rem">Set list ({items.length} songs)</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <h3>Set list ({items.length} items)</h3>
+        <div style="display:flex;gap:6px">
+          {#if isOwner}
+            <button class="btn btn-ghost btn-sm" on:click={() => showSharing = !showSharing}>
+              {showSharing ? 'Close sharing' : '🔗 Share'}
+            </button>
+          {/if}
+          {#if canEdit}
+            <button class="btn btn-ghost btn-sm" on:click={() => addingServiceCard = !addingServiceCard}>
+              📌 + Note
+            </button>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Sharing panel (owner only) -->
+      {#if showSharing && isOwner}
+        <div class="sharing-panel">
+          <h4 style="margin-bottom:0.75rem;font-size:0.9rem;color:var(--text2)">Share with users</h4>
+          <div class="share-form">
+            <div class="share-search">
+              <input
+                class="input"
+                placeholder="Search users by name or email…"
+                value={userSearchQuery}
+                on:input={(e) => onUserSearchInput(e.currentTarget.value)}
+                on:blur={() => setTimeout(() => userSearchResults = [], 200)}
+              />
+              {#if userSearchResults.length > 0}
+                <div class="search-results">
+                  {#each userSearchResults as u}
+                    <button class="search-result-item" on:click={() => selectUser(u)} type="button">
+                      <strong>{u.display_name || u.username}</strong>
+                      <span style="color:var(--text3);font-size:0.78rem">{u.email}</span>
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+              {#if searchingUsers}
+                <div class="searching-hint">Searching…</div>
+              {/if}
+            </div>
+            <select class="input share-perm-select" bind:value={sharePermission}>
+              <option value="view">View only</option>
+              <option value="edit">Can edit</option>
+            </select>
+            <button class="btn btn-primary btn-sm" disabled={!selectedUser || sharingSaving} on:click={addShare}>
+              {sharingSaving ? '…' : 'Share'}
+            </button>
+          </div>
+          {#if shares.length > 0}
+            <div class="shares-list">
+              {#each shares as share}
+                <div class="share-item">
+                  <div class="share-user">
+                    <span class="share-user-name">{share.shared_with_user.display_name || share.shared_with_user.username}</span>
+                    <span class="share-user-email">{share.shared_with_user.email}</span>
+                  </div>
+                  <div class="share-actions">
+                    <select class="input share-perm-toggle" value={share.permission} on:change={(e) => changePermission(share.id, e.currentTarget.value)}>
+                      <option value="view">👁 View</option>
+                      <option value="edit">✏ Edit</option>
+                    </select>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--error)" on:click={() => removeShare(share.id)}>✕</button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <p style="color:var(--text3);font-size:0.82rem;margin-top:0.5rem">Not shared with anyone yet.</p>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- Add service card form -->
+      {#if addingServiceCard && canEdit}
+        <div class="add-card-form">
+          <textarea class="input" bind:value={newServiceCardText} rows="2"
+            placeholder="e.g. Begin of Set 1, Wait for guitar swap, End of Set 2…"
+            on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addServiceCard(); } }}>
+          </textarea>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-primary btn-sm" disabled={!newServiceCardText.trim()} on:click={() => addServiceCard()}>Add note</button>
+            <button class="btn btn-ghost btn-sm" on:click={() => { addingServiceCard = false; newServiceCardText = ''; }}>Cancel</button>
+          </div>
+        </div>
+      {/if}
+
       {#if items.length === 0}
-        <div style="color:var(--text3);text-align:center;padding:2rem">Add songs from the library →</div>
+        <div style="color:var(--text3);text-align:center;padding:2rem">{canEdit ? 'Add songs from the library or add a note →' : 'No items in this setlist.'}</div>
       {:else}
-        <div class="setlist-items">
+        <div class="setlist-items" role="list">
           {#each items as item, idx}
-            <div class="set-item" 
-                 draggable="true" 
-                 on:dragstart={(e) => onDragStart(e, idx)}
-                 on:dragover={onDragOver}
-                 on:drop={(e) => onDrop(e, idx)}
-                 on:dragend={onDragEnd}
+            <div class="set-item" role="listitem"
+                 class:set-item-service={item.is_service_card}
+                 draggable={canEdit ? "true" : "false"}
+                 on:dragstart={(e) => canEdit && onDragStart(e, idx)}
+                 on:dragover={canEdit ? onDragOver : undefined}
+                 on:drop={(e) => canEdit && onDrop(e, idx)}
+                 on:dragend={canEdit ? onDragEnd : undefined}
                  class:dragging={draggedIndex === idx}>
               <span class="position mono">{idx + 1}</span>
-              <div class="set-item-info">
-                <span class="set-item-title">{item.song?.title || item.song_id}</span>
-                {#if item.song?.artist}<span class="set-item-artist">{item.song.artist}</span>{/if}
-              </div>
-              <div class="set-item-actions">
-                <button class="btn btn-ghost btn-sm" on:click={() => moveUp(idx)} disabled={idx === 0}>↑</button>
-                <button class="btn btn-ghost btn-sm" on:click={() => moveDown(idx)} disabled={idx === items.length-1}>↓</button>
-                <button class="btn btn-ghost btn-sm" style="color:var(--error)" on:click={() => removeItem(idx)}>✕</button>
-              </div>
+              {#if item.is_service_card}
+                <div class="service-card-item">
+                  <div class="service-card-header">
+                    <span class="service-card-icon">📌</span>
+                    <span class="service-card-label">Note</span>
+                  </div>
+                  {#if canEdit}
+                    <input class="input service-card-input"
+                      value={item.service_card_text || ''}
+                      on:input={(e) => updateServiceCardText(idx, e.currentTarget.value)}
+                      placeholder="Note text…" />
+                  {:else}
+                    <span class="service-card-text">{item.service_card_text}</span>
+                  {/if}
+                  {#if previewIdx === idx}
+                    <div class="service-card-preview">
+                      <LyricsRenderer lyrics={item.service_card_text || ''} fontSize={0.75} />
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <div class="set-item-info" role="button" tabindex="0"
+                  on:click={() => previewIdx = previewIdx === idx ? null : idx}
+                  on:keydown={(e) => e.key === 'Enter' && (previewIdx = previewIdx === idx ? null : idx)}>
+                  <span class="set-item-title">{item.song?.title || item.song_id}</span>
+                  {#if item.song?.artist}<span class="set-item-artist">{item.song.artist}</span>{/if}
+                </div>
+                {#if item.song?.key}
+                  <span class="badge badge-accent" style="font-size:0.65rem">{item.transpose_key || item.song.key}</span>
+                {/if}
+                {#if previewIdx === idx && item.song?.lyrics}
+                  <div class="lyrics-preview">
+                    <LyricsRenderer lyrics={item.song.lyrics} fontSize={0.75} />
+                  </div>
+                {/if}
+              {/if}
+              {#if canEdit}
+                <div class="set-item-actions">
+                  <button class="btn btn-ghost btn-sm" on:click={() => moveUp(idx)} disabled={idx === 0}>↑</button>
+                  <button class="btn btn-ghost btn-sm" on:click={() => moveDown(idx)} disabled={idx === items.length-1}>↓</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--error)" on:click={() => removeItem(idx)}>✕</button>
+                </div>
+              {/if}
             </div>
           {/each}
         </div>
       {/if}
     </div>
 
-    <!-- Library picker -->
-    <div class="panel">
-      <h3 style="margin-bottom:1rem">Add from library</h3>
-      <div class="field">
-        <label>Library</label>
-        <select class="input" bind:value={selectedLibrary}>
-          {#each libraries as lib}
-            <option value={lib.id}>{lib.name}</option>
+    <!-- Library picker (only if can edit) -->
+    {#if canEdit}
+      <div class="panel">
+        <h3 style="margin-bottom:1rem">Add from library</h3>
+        <div class="field">
+          <label>Library</label>
+          <select class="input" bind:value={selectedLibrary}>
+            {#each libraries as lib}
+              <option value={lib.id}>{lib.name}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="field">
+          <label>Search</label>
+          <input class="input" bind:value={songSearch} placeholder="Title or artist…" />
+        </div>
+        <div class="song-list">
+          {#each allSongs as song}
+            <button class="song-row" on:click={() => addSong(song)}
+              class:already-added={items.some(i => i.song_id === song.id)}>
+              <div>
+                <span class="song-title">{song.title}</span>
+                {#if song.artist}<span class="song-artist"> — {song.artist}</span>{/if}
+              </div>
+              {#if song.key}<span class="badge badge-accent" style="font-size:0.65rem">{song.key}</span>{/if}
+              <span style="color:var(--accent);margin-left:auto">+</span>
+            </button>
           {/each}
-        </select>
+        </div>
       </div>
-      <div class="field">
-        <label>Search</label>
-        <input class="input" bind:value={songSearch} placeholder="Title or artist…" />
-      </div>
-      <div class="song-list">
-        {#each allSongs as song}
-          <button class="song-row" on:click={() => addSong(song)}
-            class:already-added={items.some(i => i.song_id === song.id)}>
-            <div>
-              <span class="song-title">{song.title}</span>
-              {#if song.artist}<span class="song-artist"> — {song.artist}</span>{/if}
-            </div>
-            {#if song.key}<span class="badge badge-accent" style="font-size:0.65rem">{song.key}</span>{/if}
-            <span style="color:var(--accent);margin-left:auto">+</span>
-          </button>
-        {/each}
-      </div>
-    </div>
+    {/if}
   </div>
 {/if}
 
@@ -246,6 +517,64 @@
   @media (max-width: 700px) { .editor-layout { grid-template-columns: 1fr; } }
   .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
 
+  .shared-banner {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--bg4); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0.6rem 1rem;
+    margin-bottom: 1rem; font-size: 0.85rem;
+  }
+
+  /* Sharing panel */
+  .sharing-panel {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.85rem;
+    margin-bottom: 1rem;
+  }
+  .share-form {
+    display: flex; gap: 8px; align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .share-search {
+    flex: 1; min-width: 180px; position: relative;
+  }
+  .share-perm-select { width: 130px; flex-shrink: 0; }
+  .search-results {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 6px; z-index: 10;
+    max-height: 200px; overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .search-result-item {
+    display: flex; flex-direction: column; gap: 2px;
+    width: 100%; text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: none; border: none; cursor: pointer;
+    font-size: 0.82rem;
+  }
+  .search-result-item:hover { background: var(--bg4); }
+  .searching-hint { font-size: 0.75rem; color: var(--text3); padding: 4px 0; }
+  .shares-list { display: flex; flex-direction: column; gap: 6px; margin-top: 0.75rem; }
+  .share-item {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 0.5rem 0.65rem;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .share-user { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .share-user-name { font-weight: 500; font-size: 0.82rem; }
+  .share-user-email { font-size: 0.75rem; color: var(--text3); }
+  .share-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .share-perm-toggle { width: 100px; font-size: 0.75rem; }
+
+  /* Add service card form */
+  .add-card-form {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Setlist items */
   .setlist-items { display: flex; flex-direction: column; gap: 6px; }
   .set-item {
     display: flex; align-items: center; gap: 10px;
@@ -253,15 +582,44 @@
     padding: 0.5rem 0.75rem;
     cursor: grab;
   }
-  .set-item.dragging {
-    opacity: 0.5;
-    transform: rotate(2deg);
+  .set-item.dragging { opacity: 0.5; transform: rotate(2deg); }
+  .set-item-service {
+    background: color-mix(in srgb, #8b5cf6 12%, var(--bg3));
+    border-color: color-mix(in srgb, #8b5cf6 30%, var(--border));
   }
-  .position { color: var(--text3); font-size: 0.8rem; min-width: 20px; }
-  .set-item-info { flex: 1; min-width: 0; }
+  .position { color: var(--text3); font-size: 0.8rem; min-width: 20px; font-family: 'DM Mono', monospace; }
+  .set-item-info { flex: 1; min-width: 0; cursor: pointer; }
   .set-item-title { font-weight: 500; font-size: 0.875rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .set-item-artist { color: var(--text2); font-size: 0.78rem; }
   .set-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* Service card item */
+  .service-card-item { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .service-card-header { display: flex; align-items: center; gap: 4px; }
+  .service-card-icon { font-size: 0.82rem; }
+  .service-card-label { font-size: 0.7rem; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .service-card-input {
+    font-size: 0.82rem; padding: 0.3rem 0.5rem;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 4px; width: 100%;
+  }
+  .service-card-text { font-size: 0.82rem; color: var(--text); }
+  .service-card-preview {
+    margin-top: 4px; padding: 0.5rem;
+    background: var(--bg2); border-radius: 4px;
+    max-height: 120px; overflow-y: auto;
+  }
+
+  /* Lyrics preview */
+  .lyrics-preview {
+    position: absolute; left: 0; right: 0; top: 100%;
+    z-index: 20; margin-top: 4px;
+    padding: 0.75rem; border-radius: 8px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    max-height: 200px; overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .set-item { position: relative; }
 
   .song-list { display: flex; flex-direction: column; gap: 4px; max-height: 400px; overflow-y: auto; }
   .song-row {
@@ -274,4 +632,15 @@
   .song-row.already-added { opacity: 0.4; }
   .song-title { font-size: 0.875rem; font-weight: 500; color: var(--text); }
   .song-artist { font-size: 0.78rem; color: var(--text2); }
+
+  .badge-warning {
+    background: #f59e0b20; color: #f59e0b;
+    border: 1px solid #f59e0b40;
+    padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 500;
+  }
+  .badge-info {
+    background: #3b82f620; color: #60a5fa;
+    border: 1px solid #3b82f640;
+    padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 500;
+  }
 </style>

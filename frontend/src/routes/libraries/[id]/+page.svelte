@@ -16,6 +16,7 @@
   let songForm = { title: '', artist: '', lyrics: '', key: '', tempo: '', notes: '' };
   let saving = false;
   let searchingLyrics = false;
+  let showMarkupHelp = false;
 
   onMount(async () => {
     [library, songs] = await Promise.all([
@@ -187,12 +188,31 @@
         </div>
         <div class="field">
           <label>Lyrics</label>
-          <div style="margin-bottom:8px">
+          <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-sm" disabled={searchingLyrics || !songForm.artist || !songForm.title} 
               on:click={searchLyrics}>
               {searchingLyrics ? '🔍 Searching…' : '🔍 Search lyrics online'}
             </button>
+            <button class="btn btn-ghost btn-sm" on:click={() => showMarkupHelp = !showMarkupHelp}>
+              {showMarkupHelp ? '✕ Close help' : '📝 Markup help'}
+            </button>
           </div>
+
+          {#if showMarkupHelp}
+            <div class="markup-help">
+              <strong>Lyrics markup syntax:</strong>
+              <div class="markup-grid">
+                <span class="markup-code">[Verse]</span><span>Section header (colored badge)</span>
+                <span class="markup-code">[Chorus]</span><span>Also: Bridge, Intro, Outro, Tag, Solo…</span>
+                <span class="markup-code">^Am^</span><span>Superscript for chords or dynamics</span>
+                <span class="markup-code">**bold**</span><span>Bold text</span>
+                <span class="markup-code">*italic*</span><span>Italic text</span>
+                <span class="markup-code">[solo]</span><span>Instrument badge (guitar, drums, keys, bass, vocal)</span>
+                <span class="markup-code">{`{color:red}`}text{`{/color}`}</span><span>Custom colored text</span>
+              </div>
+            </div>
+          {/if}
+
           <textarea class="input" bind:value={songForm.lyrics} rows="14"
             placeholder="Paste or type lyrics here…&#10;&#10;[Verse 1]&#10;…"></textarea>
         </div>
@@ -244,4 +264,21 @@
   .song-title { font-size: 0.875rem; font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .song-artist { font-size: 0.78rem; color: var(--text2); }
   .song-meta { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+  .markup-help {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0.75rem;
+    margin-bottom: 0.75rem; font-size: 0.82rem;
+  }
+  .markup-help strong { display: block; margin-bottom: 0.5rem; }
+  .markup-grid {
+    display: grid; grid-template-columns: auto 1fr;
+    gap: 0.3rem 1rem; align-items: baseline;
+  }
+  .markup-code {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg4); padding: 0.1rem 0.4rem;
+    border-radius: 3px; font-size: 0.78rem;
+    color: var(--accent);
+  }
 </style>

@@ -1,13 +1,37 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import List
+from sqlalchemy import select, func, or_
+from typing import List, Optional
 from app.core.database import get_db
 from app.core.auth import get_current_user, require_admin, hash_password, verify_password
 from app.models.user import User
 from app.schemas.schemas import UserCreate, UserUpdate, UserPasswordChange, UserOut
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/search", response_model=List[UserOut])
+async def search_users(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Search users by username, email, or display_name (any authenticated user)."""
+    pattern = f"%{q}%"
+    result = await db.execute(
+        select(User).where(
+            User.is_active == True,
+            or_(
+                User.username.ilike(pattern),
+                User.email.ilike(pattern),
+                User.display_name.ilike(pattern),
+            )
+        )
+        .limit(limit)
+        .order_by(User.username)
+    )
+    return result.scalars().all()
 
 
 @router.get("/", response_model=List[UserOut], dependencies=[Depends(require_admin)])

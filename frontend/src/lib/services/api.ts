@@ -68,7 +68,7 @@ async function request(path: string, init: RequestInit = {}, retry = true): Prom
   return res.json();
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth ────────────────────────────────────────────────────────────
 export const api = {
   auth: {
     login: async (identifier: string, password: string) => {
@@ -82,9 +82,11 @@ export const api = {
     logout: () => clearTokens()
   },
 
-  // ── Users ─────────────────────────────────────────────────────────────────
+  // ── Users ───────────────────────────────────────────────────────────
   users: {
     list: () => request('/users/'),
+    search: (q: string, limit?: number) =>
+      request(`/users/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`),
     create: (body: any) => request('/users/', { method: 'POST', body: JSON.stringify(body) }),
     get: (id: number) => request(`/users/${id}`),
     update: (id: number, body: any) => request(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -92,7 +94,7 @@ export const api = {
     changePassword: (id: number, body: any) => request(`/users/${id}/change-password`, { method: 'POST', body: JSON.stringify(body) })
   },
 
-  // ── Libraries ─────────────────────────────────────────────────────────────
+  // ── Libraries ──────────────────────────────────────────────────────────
   libraries: {
     list: () => request('/libraries/'),
     create: (body: any) => request('/libraries/', { method: 'POST', body: JSON.stringify(body) }),
@@ -101,7 +103,7 @@ export const api = {
     delete: (id: number) => request(`/libraries/${id}`, { method: 'DELETE' })
   },
 
-  // ── Songs ─────────────────────────────────────────────────────────────────
+  // ── Songs ───────────────────────────────────────────────────────────
   songs: {
     list: (libraryId: number, q?: string) =>
       request(`/libraries/${libraryId}/songs/${q ? `?q=${encodeURIComponent(q)}` : ''}`),
@@ -115,7 +117,7 @@ export const api = {
       request(`/libraries/${libraryId}/songs/${songId}`, { method: 'DELETE' })
   },
 
-  // ── Setlists ──────────────────────────────────────────────────────────────
+  // ── Setlists ────────────────────────────────────────────────────────────
   setlists: {
     list: () => request('/setlists/'),
     create: (body: any) => request('/setlists/', { method: 'POST', body: JSON.stringify(body) }),
@@ -124,10 +126,16 @@ export const api = {
     delete: (id: number) => request(`/setlists/${id}`, { method: 'DELETE' }),
     replaceItems: (id: number, items: any[]) =>
       request(`/setlists/${id}/items`, { method: 'PUT', body: JSON.stringify(items) }),
-    download: (id: number) => request(`/setlists/${id}/download`)
+    download: (id: number) => request(`/setlists/${id}/download`),
+    
+    // Sharing
+    listShares: (id: number) => request(`/setlists/${id}/shares`),
+    addShare: (id: number, body: any) => request(`/setlists/${id}/shares`, { method: 'POST', body: JSON.stringify(body) }),
+    updateShare: (setlistId: number, shareId: number, body: any) => request(`/setlists/${setlistId}/shares/${shareId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    removeShare: (setlistId: number, shareId: number) => request(`/setlists/${setlistId}/shares/${shareId}`, { method: 'DELETE' })
   },
 
-  // ── Admin ─────────────────────────────────────────────────────────────────
+  // ── Admin ────────────────────────────────────────────────────────────
   admin: {
     storage: () => request('/admin/storage')
   }

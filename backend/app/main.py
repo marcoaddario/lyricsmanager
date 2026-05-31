@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
-from app.api import auth, users, libraries, songs, setlists, admin
+from app.api import auth, users, libraries, songs, setlists, sharing, admin
 
 settings = get_settings()
 
@@ -26,6 +26,7 @@ app.include_router(users.router, prefix=API_PREFIX)
 app.include_router(libraries.router, prefix=API_PREFIX)
 app.include_router(songs.router, prefix=API_PREFIX)
 app.include_router(setlists.router, prefix=API_PREFIX)
+app.include_router(sharing.router, prefix=API_PREFIX)
 app.include_router(admin.router, prefix=API_PREFIX)
 
 

@@ -50,7 +50,7 @@
       <button class="btn btn-ghost btn-sm" style="display:none" class:show-mobile={true}
         on:click={() => sidebarOpen = !sidebarOpen} aria-label="Menu">☰</button>
       <span style="font-weight:600;font-size:1rem;letter-spacing:-0.01em">🎵 Lyrics Manager</span>
-      <span style="flex:1"/>
+      <span style="flex:1"></span>
       <span class="badge badge-accent" style="font-size:0.65rem">{$user.display_name || $user.username}</span>
       {#if $isAdmin}<span class="badge badge-success" style="font-size:0.65rem">admin</span>{/if}
     </header>
